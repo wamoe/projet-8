@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/768647755c334e6d8823e44614b2d61c/artifacts
+end_time: 1768227996882
+entry_point_name: ''
+experiment_id: '691283516791651235'
+lifecycle_stage: active
+run_id: 768647755c334e6d8823e44614b2d61c
+run_name: LightGBM_Balanced
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1768227943170
+status: 3
+tags: []
+user_id: wahid.ameur

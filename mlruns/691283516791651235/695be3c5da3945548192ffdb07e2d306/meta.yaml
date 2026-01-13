@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/695be3c5da3945548192ffdb07e2d306/artifacts
+end_time: 1768320061099
+entry_point_name: ''
+experiment_id: '691283516791651235'
+lifecycle_stage: active
+run_id: 695be3c5da3945548192ffdb07e2d306
+run_name: GridSearch_Random_Forest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1768320022631
+status: 3
+tags: []
+user_id: wahid.ameur

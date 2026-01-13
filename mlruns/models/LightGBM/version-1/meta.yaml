@@ -1,0 +1,18 @@
+aliases: []
+creation_timestamp: 1768320956116
+current_stage: None
+deployment_job_state: null
+description: ''
+last_updated_timestamp: 1768320956116
+metrics: null
+model_id: m-78c45f0171204209932b117f311d8427
+name: LightGBM
+params: null
+run_id: ''
+run_link: ''
+source: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/models/m-78c45f0171204209932b117f311d8427/artifacts
+status: READY
+status_message: null
+storage_location: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/models/m-78c45f0171204209932b117f311d8427/artifacts
+user_id: null
+version: 1

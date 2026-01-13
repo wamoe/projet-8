@@ -1,0 +1,10 @@
+artifact_location: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/models/m-31115d1a86724d0abc8422565dbbd5a6/artifacts
+creation_timestamp: 1768216384356
+experiment_id: '691283516791651235'
+last_updated_timestamp: 1768216394415
+model_id: m-31115d1a86724d0abc8422565dbbd5a6
+model_type: null
+name: model
+source_run_id: e7f876d29cdf47b485aa3c036e2b778a
+status: 2
+status_message: null

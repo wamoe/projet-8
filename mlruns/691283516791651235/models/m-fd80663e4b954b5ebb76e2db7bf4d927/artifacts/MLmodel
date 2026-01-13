@@ -1,0 +1,22 @@
+artifact_path: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/models/m-fd80663e4b954b5ebb76e2db7bf4d927/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.9.25
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+mlflow_version: 3.1.4
+model_id: m-fd80663e4b954b5ebb76e2db7bf4d927
+model_size_bytes: 17638
+model_uuid: m-fd80663e4b954b5ebb76e2db7bf4d927
+prompts: null
+run_id: a82d777f982a4e52bea960c603490dd1
+utc_time_created: '2026-01-12 14:02:54.945979'

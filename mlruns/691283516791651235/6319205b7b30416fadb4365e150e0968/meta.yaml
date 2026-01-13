@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/6319205b7b30416fadb4365e150e0968/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '691283516791651235'
+lifecycle_stage: active
+run_id: 6319205b7b30416fadb4365e150e0968
+run_name: GridSearch_Logistic_Regression
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1768227729672
+status: 1
+tags: []
+user_id: wahid.ameur

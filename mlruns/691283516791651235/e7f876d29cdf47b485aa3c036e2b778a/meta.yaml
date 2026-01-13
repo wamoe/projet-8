@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Users/wahid.ameur/.vscode/projet7 credit score/notebooks/../mlruns/691283516791651235/e7f876d29cdf47b485aa3c036e2b778a/artifacts
+end_time: 1768216394486
+entry_point_name: ''
+experiment_id: '691283516791651235'
+lifecycle_stage: active
+run_id: e7f876d29cdf47b485aa3c036e2b778a
+run_name: Baseline_Dummy
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1768216383354
+status: 3
+tags: []
+user_id: wahid.ameur
