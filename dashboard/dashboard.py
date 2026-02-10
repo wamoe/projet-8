@@ -623,10 +623,17 @@ if res is None:
     st.warning("Clique sur « Calculer le scoring » pour obtenir une décision.")
 else:
     proba = float(res.get("probability", 0.0))
-    threshold = float(res.get("threshold", 0.45))
+
+    thr = res.get("threshold", None)
+    threshold = float(thr) if thr is not None else 0.45  # fallback = API
+    if thr is None:
+        st.warning("Le seuil n'a pas été renvoyé par l'API (fallback utilisé).")
+
     status = res.get("status", "—")
     prediction = int(res.get("prediction", 0))
-    is_refused = proba >= threshold
+    is_refused = (prediction == 1) or (str(status).strip().lower() == "refusé")
+
+
 
     st.markdown("<div class='rowgap'></div>", unsafe_allow_html=True)
 

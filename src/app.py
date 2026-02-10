@@ -16,6 +16,7 @@ root_dir = os.path.dirname(current_dir)
 # On construit les chemins absolus vers le modèle et les features
 MODEL_PATH = os.path.join(root_dir, 'model_production', 'model.pkl')
 FEATURES_PATH = os.path.join(root_dir, 'model_production', 'features.csv')
+THRESHOLD_PATH = os.path.join(root_dir, "model_production", "threshold.txt")
 
 print(f"Chemin du modèle détecté : {MODEL_PATH}")
 
@@ -62,7 +63,16 @@ def predict():
         y_proba = model.predict_proba(df)[:, 1][0]
         
         # 5. Interprétation
-        optimal_threshold = 0.45 
+        # Seuil par défaut (fallback)
+        optimal_threshold = 0.5
+
+        # Si un seuil a été exporté depuis le notebook, on l’utilise
+        if os.path.exists(THRESHOLD_PATH):
+            with open(THRESHOLD_PATH, "r") as f:
+                optimal_threshold = float(f.read().strip())
+
+        print(f"Seuil utilisé par l'API : {optimal_threshold}") 
+
         decision = 1 if y_proba >= optimal_threshold else 0
         
         return jsonify({
