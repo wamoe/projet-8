@@ -22,20 +22,19 @@ print(f"Chemin du modèle détecté : {MODEL_PATH}")
 
 # --- CHARGEMENT DU MODÈLE ---
 print("Chargement du modèle...")
-try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Le fichier n'existe pas : {MODEL_PATH}")
-        
-    model = joblib.load(MODEL_PATH)
-    
-    # Chargement des features attendues
-    expected_features = pd.read_csv(FEATURES_PATH)
-    expected_cols = expected_features.iloc[:, 0].tolist()
-    
-    print(" Modèle chargé avec succès.")
-except Exception as e:
-    print(f" ERREUR CRITIQUE lors du chargement du modèle : {e}")
-    model = None
+model = None
+expected_cols = None
+
+def ensure_loaded():
+    global model, expected_cols
+    if expected_cols is None:
+        expected_cols = pd.read_csv(FEATURES_PATH)["feature"].tolist()
+    if model is None:
+        print("Chargement du modèle (lazy)...")
+        model = joblib.load(MODEL_PATH)
+        print("Modèle chargé.")
+    return model, expected_cols
+
 def load_threshold(default=0.5) -> float:
     thr = default
     try:
@@ -45,6 +44,16 @@ def load_threshold(default=0.5) -> float:
     except Exception:
         thr = default
     return float(thr)
+
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok"}), 200
+
+@app.get("/")
+def home():
+    return "ok", 200
+
+
 
 @app.route('/')
 def home():
@@ -56,6 +65,8 @@ def explain():
     Explication locale : contributions type SHAP via LightGBM pred_contrib
     (robuste, évite les soucis de dépendances shap/numba en prod).
     """
+    model, expected_cols = ensure_loaded()
+
     if not model:
         return jsonify({'error': "Le modèle n'est pas chargé. Vérifiez les logs du serveur."}), 500
 
@@ -111,7 +122,10 @@ def explain():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/predict', methods=['POST'])
+
 def predict():
+    model, expected_cols = ensure_loaded()
+
     if not model:
         return jsonify({'error': 'Le modèle n\'est pas chargé. Vérifiez les logs du serveur.'}), 500
     
