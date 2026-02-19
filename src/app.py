@@ -57,10 +57,7 @@ def health():
 def home():
     return "ok", 200
 
-@app.route('/')
-def home():
-    status_model = " Chargé" if model else " Non chargé (Voir logs terminal)"
-    return f"<h1>API de Scoring Crédit</h1><p>État du modèle : {status_model}</p>"
+
 @app.route('/explain', methods=['POST'])
 def explain():
     """
