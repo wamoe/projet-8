@@ -1,0 +1,6 @@
+streamlit==1.41.1
+altair==5.5.0
+pandas
+numpy
+requests
+plotly
