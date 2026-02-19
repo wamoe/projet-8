@@ -8,7 +8,6 @@ import requests
 import numpy as np
 import matplotlib.pyplot as plt
 
-import altair as alt
 
 
 # =============================
@@ -788,81 +787,45 @@ with tab2:
     st.markdown("### Distributions (client vs population)")
     st.caption("Histogramme interactif : distribution sur l’échantillon + position du client.")
 
-    # Sécurité : si on n’a pas encore de données
     if df_num_sample is None or df_num_sample.empty:
         st.warning("Aucune donnée numérique disponible pour tracer les distributions.")
     else:
-        # Colonnes candidates (numériques, hors identifiants)
-        candidate_cols = [
-            c for c in df_num_sample.columns
-            if c not in ("SK_ID_CURR", "TARGET")
-        ]
-
+        candidate_cols = [c for c in df_num_sample.columns if c not in ("SK_ID_CURR", "TARGET")]
         if not candidate_cols:
             st.warning("Aucune variable numérique exploitable pour les distributions.")
         else:
-            # Sélecteur de variable
-            default_feat = candidate_cols[0]
-            feat = st.selectbox(
-                "Choisir une variable",
-                options=candidate_cols,
-                index=candidate_cols.index(default_feat) if default_feat in candidate_cols else 0
-            )
+            feat = st.selectbox("Choisir une variable", options=candidate_cols, index=0)
 
-            # Préparer les données (nettoyage NaN/inf)
             s = df_num_sample[feat].replace([np.inf, -np.inf], np.nan).dropna()
-            df_hist = pd.DataFrame({feat: s})
-
-            # Valeur client
             x_client = row.get(feat, np.nan)
             x_client_num = float(x_client) if pd.notna(x_client) else np.nan
 
-            import altair as alt
+            import plotly.express as px
 
-            # Histogramme interactif
-            hist = (
-                alt.Chart(df_hist)
-                .mark_bar()
-                .encode(
-                    x=alt.X(
-                        f"{feat}:Q",
-                        bin=alt.Bin(maxbins=30),
-                        title=pretty_label(feat) if "pretty_label" in globals() else feat
-                    ),
-                    y=alt.Y("count()", title="Nombre de clients"),
-                    tooltip=[alt.Tooltip("count()", title="Clients")]
-                )
-                .properties(height=320)
-                .interactive()
+            fig = px.histogram(
+                x=s,
+                nbins=30,
+                labels={"x": pretty_label(feat) if "pretty_label" in globals() else feat, "count": "Nombre de clients"},
+                title=None
             )
 
-            # Ligne verticale pour la valeur client (si finie)
             if np.isfinite(x_client_num):
-                vline = alt.Chart(pd.DataFrame({feat: [x_client_num]})).mark_rule().encode(
-                    x=alt.X(f"{feat}:Q"),
-                    tooltip=[alt.Tooltip(f"{feat}:Q", title="Valeur client")]
-                )
-                chart = (hist + vline)
-            else:
-                chart = hist
+                fig.add_vline(x=x_client_num)
 
-            st.altair_chart(chart, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
 
-            # Petit récap
             colA, colB, colC = st.columns(3)
             with colA:
                 st.metric("Moyenne (échantillon)", f"{float(s.mean()):.4g}" if len(s) else "—")
             with colB:
                 st.metric("Médiane (échantillon)", f"{float(s.median()):.4g}" if len(s) else "—")
             with colC:
-                st.metric("Valeur client", fmt_number(x_client_num) if ("fmt_number" in globals() and np.isfinite(x_client_num)) else (f"{x_client_num:.4g}" if np.isfinite(x_client_num) else "—"))
+                st.metric(
+                    "Valeur client",
+                    fmt_number(x_client_num) if ("fmt_number" in globals() and np.isfinite(x_client_num))
+                    else (f"{x_client_num:.4g}" if np.isfinite(x_client_num) else "—")
+                )
 
-            # Option : afficher aussi le panel matplotlib existant (si tu veux garder)
-            with st.expander("Voir aussi les panneaux statiques (matplotlib)", expanded=False):
-                try:
-                    dist_panels(row, [feat])
-                except Exception as e:
-                    st.warning(f"Impossible d’afficher dist_panels() : {e}")
 
 with tab3:
     st.markdown("### Explication de la décision (locale)")
@@ -885,27 +848,19 @@ with tab3:
                 df_exp = df_exp.sort_values("abs", ascending=True)
 
                 # ---- Graphique interactif (Altair) ----
-                import altair as alt
-                chart = (
-                    alt.Chart(df_exp)
-                    .mark_bar()
-                    .encode(
-                        x=alt.X("contribution:Q", title="Contribution au risque"),
-                        y=alt.Y("feature:N", sort=None, title="Variable"),
-                        tooltip=["feature:N", "value:Q", "contribution:Q"]
-                    )
-                    .properties(height=420)
-                    .interactive()
-                )
-                st.altair_chart(chart, use_container_width=True)
+                df_exp = pd.DataFrame(top)
+                df_exp["abs"] = df_exp["contribution"].abs()
+                df_exp = df_exp.sort_values("abs", ascending=True)
 
-                st.dataframe(
-                    df_exp[["feature", "value", "contribution"]].sort_values(
-                        "contribution", ascending=False
-                    ),
-                    use_container_width=True,
-                    hide_index=True
+                fig = px.bar(
+                    df_exp,
+                    x="contribution",
+                    y="feature",
+                    orientation="h",
+                    hover_data=["value", "contribution"],
+                    title=None
                 )
+st.plotly_chart(fig, use_container_width=True) 
 
 with tab4:
     st.markdown("### Données brutes")
