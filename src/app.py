@@ -36,11 +36,79 @@ try:
 except Exception as e:
     print(f" ERREUR CRITIQUE lors du chargement du modèle : {e}")
     model = None
+def load_threshold(default=0.5) -> float:
+    thr = default
+    try:
+        if os.path.exists(THRESHOLD_PATH):
+            with open(THRESHOLD_PATH, "r") as f:
+                thr = float(f.read().strip())
+    except Exception:
+        thr = default
+    return float(thr)
 
 @app.route('/')
 def home():
     status_model = " Chargé" if model else " Non chargé (Voir logs terminal)"
     return f"<h1>API de Scoring Crédit</h1><p>État du modèle : {status_model}</p>"
+@app.route('/explain', methods=['POST'])
+def explain():
+    """
+    Explication locale : contributions type SHAP via LightGBM pred_contrib
+    (robuste, évite les soucis de dépendances shap/numba en prod).
+    """
+    if not model:
+        return jsonify({'error': "Le modèle n'est pas chargé. Vérifiez les logs du serveur."}), 500
+
+    try:
+        data = request.get_json()
+        df = pd.DataFrame(data)
+
+        # mêmes colonnes qu’à l’entraînement
+        df = df.reindex(columns=expected_cols, fill_value=0)
+
+        # récupérer le booster LightGBM
+        booster = None
+        if hasattr(model, "booster_"):           # LGBMClassifier / LGBMRegressor
+            booster = model.booster_
+        elif hasattr(model, "predict") and "pred_contrib" in getattr(model.predict, "__code__", ()).co_varnames:
+            booster = model  # cas rare : modèle directement booster
+        else:
+            # fallback : pas un modèle LightGBM compatible pred_contrib
+            return jsonify({
+                "error": "Explication indisponible: modèle non compatible pred_contrib (LightGBM requis)."
+            }), 400
+
+        contrib = booster.predict(df, pred_contrib=True)
+        contrib = np.asarray(contrib)
+
+        # contrib shape = (n, n_features + 1) ; dernier = base_value (bias)
+        vals = contrib[0, :-1].astype(float)
+        base_val = float(contrib[0, -1])
+
+        # top-k (par abs)
+        k = int(request.args.get("k", 12))
+        k = max(1, min(k, len(expected_cols)))
+        idx = np.argsort(np.abs(vals))[::-1][:k]
+
+        top = []
+        for j in idx:
+            feat = expected_cols[j]
+            top.append({
+                "feature": feat,
+                "value": float(df.iloc[0, j]),
+                "contribution": float(vals[j])
+            })
+
+        thr = load_threshold(default=0.5)
+
+        return jsonify({
+            "base_value": base_val,
+            "threshold": float(thr),
+            "top": top
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -64,12 +132,8 @@ def predict():
         
         # 5. Interprétation
         # Seuil par défaut (fallback)
-        optimal_threshold = 0.5
+        optimal_threshold = load_threshold(default=0.5)
 
-        # Si un seuil a été exporté depuis le notebook, on l’utilise
-        if os.path.exists(THRESHOLD_PATH):
-            with open(THRESHOLD_PATH, "r") as f:
-                optimal_threshold = float(f.read().strip())
 
         print(f"Seuil utilisé par l'API : {optimal_threshold}") 
 

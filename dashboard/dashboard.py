@@ -8,12 +8,14 @@ import requests
 import numpy as np
 import matplotlib.pyplot as plt
 
+import altair as alt
+
 
 # =============================
 # CONFIG
 # =============================
 LOCAL_API_BASE = "http://127.0.0.1:5001"
-RENDER_API_BASE = "https://projet-7-credit.onrender.com"
+RENDER_API_BASE = "https://projet-8-gyq1.onrender.com"
 DEFAULT_API_BASE = os.environ.get("API_BASE_URL", LOCAL_API_BASE)
 
 st.set_page_config(
@@ -218,6 +220,10 @@ def base_from_predict(predict_url: str) -> str:
     if u.endswith("/predict"):
         return u[:-len("/predict")]
     return u
+
+def explain_url_from_predict(predict_url: str) -> str:
+    base = base_from_predict(predict_url)
+    return base.rstrip("/") + "/explain"
 
 
 # =============================
@@ -574,6 +580,19 @@ def do_api_call():
 if call_api:
     do_api_call()
 
+def do_explain_call(k: int = 12):
+    record = client_row_df.to_dict(orient="records")[0]
+    payload = [clean_record_for_json(record)]
+    url = explain_url_from_predict(api_url) + f"?k={k}"
+    try:
+        with st.spinner("Récupération explication..."):
+            r = requests.post(url, json=payload, timeout=60)
+        if r.status_code == 200:
+            return r.json(), None
+        return None, f"Erreur explain {r.status_code} — {r.text}"
+    except Exception as e:
+        return None, f"Explain indisponible: {e}"
+
 res = st.session_state.api_result
 err = st.session_state.api_error
 
@@ -625,7 +644,8 @@ else:
     proba = float(res.get("probability", 0.0))
 
     thr = res.get("threshold", None)
-    threshold = float(thr) if thr is not None else 0.45  # fallback = API
+    threshold = float(thr) if thr is not None else 0.5
+  # fallback = API
     if thr is None:
         st.warning("Le seuil n'a pas été renvoyé par l'API (fallback utilisé).")
 
@@ -728,7 +748,12 @@ if shown == 0:
 # ANALYSE VARIABLES
 # =============================
 st.markdown("<div class='rowgap'></div>", unsafe_allow_html=True)
-tab1, tab2, tab3 = st.tabs(["Top variables (z-score)", "Distributions (client vs population)", "Données brutes"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Top variables (z-score)",
+    "Distributions (client vs population)",
+    "Explication modèle",
+    "Données brutes"
+])
 
 with tab1:
     st.markdown("### Top variables atypiques")
@@ -760,20 +785,129 @@ with tab1:
             st.pyplot(fig, use_container_width=True)
 
 with tab2:
-    st.markdown("### Distributions comparées")
-    st.caption("Histogrammes population (échantillon) + ligne verticale = valeur client.")
+    st.markdown("### Distributions (client vs population)")
+    st.caption("Histogramme interactif : distribution sur l’échantillon + position du client.")
 
-    if not show_details:
-        st.info("Active « Analyse variables » dans la sidebar.")
+    # Sécurité : si on n’a pas encore de données
+    if df_num_sample is None or df_num_sample.empty:
+        st.warning("Aucune donnée numérique disponible pour tracer les distributions.")
     else:
-        if len(num_cols) == 0:
-            st.info("Aucune variable numérique détectée.")
+        # Colonnes candidates (numériques, hors identifiants)
+        candidate_cols = [
+            c for c in df_num_sample.columns
+            if c not in ("SK_ID_CURR", "TARGET")
+        ]
+
+        if not candidate_cols:
+            st.warning("Aucune variable numérique exploitable pour les distributions.")
         else:
-            top_df, df_num_sample = top_deviations(df, row, num_cols, sample_size=sample_size, k=6)
-            feats = top_df["feature"].tolist()[:6]
-            dist_panels(df_num_sample, row, feats)
+            # Sélecteur de variable
+            default_feat = candidate_cols[0]
+            feat = st.selectbox(
+                "Choisir une variable",
+                options=candidate_cols,
+                index=candidate_cols.index(default_feat) if default_feat in candidate_cols else 0
+            )
+
+            # Préparer les données (nettoyage NaN/inf)
+            s = df_num_sample[feat].replace([np.inf, -np.inf], np.nan).dropna()
+            df_hist = pd.DataFrame({feat: s})
+
+            # Valeur client
+            x_client = row.get(feat, np.nan)
+            x_client_num = float(x_client) if pd.notna(x_client) else np.nan
+
+            import altair as alt
+
+            # Histogramme interactif
+            hist = (
+                alt.Chart(df_hist)
+                .mark_bar()
+                .encode(
+                    x=alt.X(
+                        f"{feat}:Q",
+                        bin=alt.Bin(maxbins=30),
+                        title=pretty_label(feat) if "pretty_label" in globals() else feat
+                    ),
+                    y=alt.Y("count()", title="Nombre de clients"),
+                    tooltip=[alt.Tooltip("count()", title="Clients")]
+                )
+                .properties(height=320)
+                .interactive()
+            )
+
+            # Ligne verticale pour la valeur client (si finie)
+            if np.isfinite(x_client_num):
+                vline = alt.Chart(pd.DataFrame({feat: [x_client_num]})).mark_rule().encode(
+                    x=alt.X(f"{feat}:Q"),
+                    tooltip=[alt.Tooltip(f"{feat}:Q", title="Valeur client")]
+                )
+                chart = (hist + vline)
+            else:
+                chart = hist
+
+            st.altair_chart(chart, use_container_width=True)
+
+            # Petit récap
+            colA, colB, colC = st.columns(3)
+            with colA:
+                st.metric("Moyenne (échantillon)", f"{float(s.mean()):.4g}" if len(s) else "—")
+            with colB:
+                st.metric("Médiane (échantillon)", f"{float(s.median()):.4g}" if len(s) else "—")
+            with colC:
+                st.metric("Valeur client", fmt_number(x_client_num) if ("fmt_number" in globals() and np.isfinite(x_client_num)) else (f"{x_client_num:.4g}" if np.isfinite(x_client_num) else "—"))
+
+            # Option : afficher aussi le panel matplotlib existant (si tu veux garder)
+            with st.expander("Voir aussi les panneaux statiques (matplotlib)", expanded=False):
+                try:
+                    dist_panels(row, [feat])
+                except Exception as e:
+                    st.warning(f"Impossible d’afficher dist_panels() : {e}")
 
 with tab3:
+    st.markdown("### Explication de la décision (locale)")
+    st.caption("Contributions des variables les plus influentes pour CE client (positif = augmente le risque).")
+
+    if res is None:
+        st.info("Calcule le scoring d’abord.")
+    else:
+        explain, eerr = do_explain_call(k=12)
+        if eerr:
+            st.warning(eerr)
+        else:
+            top = explain.get("top", [])
+            if not top:
+                st.info("Pas d’explication renvoyée.")
+            else:
+                df_exp = pd.DataFrame(top)
+                # tri pour affichage
+                df_exp["abs"] = df_exp["contribution"].abs()
+                df_exp = df_exp.sort_values("abs", ascending=True)
+
+                # ---- Graphique interactif (Altair) ----
+                import altair as alt
+                chart = (
+                    alt.Chart(df_exp)
+                    .mark_bar()
+                    .encode(
+                        x=alt.X("contribution:Q", title="Contribution au risque"),
+                        y=alt.Y("feature:N", sort=None, title="Variable"),
+                        tooltip=["feature:N", "value:Q", "contribution:Q"]
+                    )
+                    .properties(height=420)
+                    .interactive()
+                )
+                st.altair_chart(chart, use_container_width=True)
+
+                st.dataframe(
+                    df_exp[["feature", "value", "contribution"]].sort_values(
+                        "contribution", ascending=False
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+with tab4:
     st.markdown("### Données brutes")
     st.caption("Vue détaillée (audit / debug).")
 
