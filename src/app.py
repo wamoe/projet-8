@@ -45,13 +45,9 @@ def load_threshold(default=0.5) -> float:
         thr = default
     return float(thr)
 
-@app.get("/health")
-def health():
-    return jsonify({"status": "ok"}), 200
 
-@app.get("/")
-def home():
-    return "ok", 200
+
+
 
 @app.route("/health", methods=["GET", "HEAD"])
 def health():
