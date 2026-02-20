@@ -16,14 +16,15 @@ LOCAL_API_BASE = "http://127.0.0.1:5001"
 RENDER_API_BASE = "https://projet-8-gyq1.onrender.com"
 DEFAULT_API_BASE = os.environ.get("API_BASE_URL", LOCAL_API_BASE)
 
+# Critère WCAG 2.4.2 : Titre de page descriptif
 st.set_page_config(
-    page_title="Scoring Crédit",
+    page_title="Scoring Crédit - Prêt à dépenser",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # =============================
-# CSS (clair + dark mode)
+# CSS (clair + dark mode + accessibilité)
 # =============================
 st.markdown("""
 <style>
@@ -33,16 +34,27 @@ st.markdown("""
   --panel2: rgba(17, 24, 39, 0.02);
   --border: rgba(17, 24, 39, 0.11);
   --text: rgba(17, 24, 39, 0.95);
-  --muted: rgba(17, 24, 39, 0.62);
+  
+  /* Critère WCAG 1.4.3 : Contraste amélioré (texte plus opaque) */
+  --muted: rgba(17, 24, 39, 0.75); 
 
   --primary: #2563EB;
-  --success: #16A34A;
+  
+  /* Critère WCAG 1.4.3 : Contraste amélioré (vert plus foncé) */
+  --success: #15803D; 
   --danger:  #DC2626;
   --warn:    #D97706;
   --slate:   #0F172A;
 }
 
+/* Classe pour lecteur d'écran (Accessibilité WCAG 1.1.1) */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; 
+  overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;
+}
+
 /* Layout global */
+/* Critère WCAG 1.4.4 : Utilisation de rem pour le redimensionnement du texte */
 .block-container{padding-top: 2.4rem; padding-bottom: 2rem; max-width: 1400px;}
 [data-testid="stSidebar"]{border-right: 1px solid var(--border);}
 [data-testid="stSidebar"] .block-container{padding-top: 1.2rem;}
@@ -131,7 +143,7 @@ h1,h2,h3{letter-spacing:-0.02em; line-height: 1.12; margin-top: 0.2rem;}
     --panel2: rgba(255,255,255,.055);
     --border: rgba(255,255,255,.13);
     --text: rgba(255,255,255,.92);
-    --muted: rgba(255,255,255,.68);
+    --muted: rgba(255,255,255,.75);
     --primary: #60A5FA;
     --success: #34D399;
     --danger:  #F87171;
@@ -355,7 +367,7 @@ def profile_card_html(title: str, subtitle: str, items: List[Tuple[str, str]]) -
 def bullet_risk(prob: float, threshold: float):
     prob = float(np.clip(prob, 0, 1))
     threshold = float(np.clip(threshold, 0, 1))
-    color = "#DC2626" if prob >= threshold else "#16A34A"
+    color = "#DC2626" if prob >= threshold else "#15803D" # Mis à jour pour contraster
 
     fig, ax = plt.subplots(figsize=(9, 1.6))
     ax.barh([0], [1.0], height=0.28, alpha=0.12)
@@ -368,6 +380,9 @@ def bullet_risk(prob: float, threshold: float):
     ax.set_title("Risque estimé (barre) + seuil (ligne)")
     for spine in ax.spines.values():
         spine.set_visible(False)
+    
+    # Texte caché pour l'accessibilité
+    st.markdown("<div class='sr-only'>Graphique jauge montrant la probabilité de défaut estimée par rapport au seuil d'acceptation.</div>", unsafe_allow_html=True)
     st.pyplot(fig, use_container_width=True)
 
 def top_deviations(df_all: pd.DataFrame, row: pd.Series, numeric_cols: List[str], sample_size: int = 8000, k: int = 12):
@@ -658,6 +673,9 @@ with tab1:
             ax.barh(show["feature"][::-1], show["z_abs"][::-1])
             ax.set_xlabel("z-score absolu")
             ax.set_title("Top 12 variables les plus atypiques")
+            
+            # Texte alternatif pour lecteur d'écran
+            st.markdown("<div class='sr-only'>Graphique à barres montrant les 12 variables les plus atypiques du client comparées à la moyenne de l'échantillon.</div>", unsafe_allow_html=True)
             st.pyplot(fig, use_container_width=True)
 
 with tab2:
@@ -684,6 +702,8 @@ with tab2:
             if np.isfinite(x_client_num):
                 fig.add_vline(x=x_client_num, line_color="red", annotation_text="Client")
 
+            # Texte alternatif
+            st.markdown(f"<div class='sr-only'>Histogramme montrant la distribution de la variable {feat} par rapport aux autres clients. Le client sélectionné est positionné à la valeur {x_client_num}.</div>", unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
@@ -714,9 +734,11 @@ with tab3:
         
         if np.isfinite(x_client) and np.isfinite(y_client):
             fig.add_scatter(x=[x_client], y=[y_client], mode='markers', 
-                            marker=dict(color='red', size=14, symbol='star'),
+                            marker=dict(color='red', size=14, symbol='star'), # Différenciation par la forme (Critère 1.4.1)
                             name=f"Client sélectionné")
             
+        # Texte alternatif
+        st.markdown(f"<div class='sr-only'>Nuage de points croisant {feat_x} et {feat_y}. Le client est repéré par une étoile rouge.</div>", unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=True)
 
 with tab4:
@@ -748,9 +770,11 @@ with tab4:
                     fig_local = px.bar(
                         df_local, x="contribution", y="feature", orientation="h",
                         hover_data=["value"], color="contribution",
-                        color_continuous_scale=["#16A34A", "#E2E8F0", "#DC2626"]
+                        color_continuous_scale=["#15803D", "#E2E8F0", "#DC2626"]
                     )
                     fig_local.update_layout(coloraxis_showscale=False, margin=dict(l=0, r=0, t=30, b=0))
+                    
+                    st.markdown("<div class='sr-only'>Graphique à barres montrant l'importance locale des variables ayant influencé le score de ce client de manière positive ou négative.</div>", unsafe_allow_html=True)
                     st.plotly_chart(fig_local, use_container_width=True)
                 
                 with col2:
@@ -765,6 +789,8 @@ with tab4:
                             color_discrete_sequence=["#2563EB"]
                         )
                         fig_global.update_layout(margin=dict(l=0, r=0, t=30, b=0))
+                        
+                        st.markdown("<div class='sr-only'>Graphique à barres montrant l'importance globale des variables les plus déterminantes pour le modèle prédictif.</div>", unsafe_allow_html=True)
                         st.plotly_chart(fig_global, use_container_width=True)
                     else:
                         st.info("L'importance globale n'est pas disponible pour ce modèle.")
