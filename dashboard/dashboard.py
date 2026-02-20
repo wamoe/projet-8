@@ -7,8 +7,7 @@ import pandas as pd
 import requests
 import numpy as np
 import matplotlib.pyplot as plt
-
-
+import plotly.express as px
 
 # =============================
 # CONFIG
@@ -93,7 +92,7 @@ h1,h2,h3{letter-spacing:-0.02em; line-height: 1.12; margin-top: 0.2rem;}
 .kpi .v{font-weight:950; font-size:1.65rem; letter-spacing:-.02em; color: var(--slate); margin-top:.15rem;}
 .kpi .s{color: var(--muted); font-size:.85rem; margin-top:.15rem;}
 
-/* ===== Profil client (nouveau design) ===== */
+/* ===== Profil client ===== */
 .profile-card{
   background: var(--panel);
   border: 1px solid var(--border);
@@ -101,62 +100,23 @@ h1,h2,h3{letter-spacing:-0.02em; line-height: 1.12; margin-top: 0.2rem;}
   padding: 1rem 1.05rem;
 }
 .profile-head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:1rem;
-  padding-bottom:.7rem;
-  border-bottom: 1px solid rgba(17,24,39,.09);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;
+  padding-bottom:.7rem; border-bottom: 1px solid rgba(17,24,39,.09);
 }
-.profile-title{
-  font-weight:950;
-  letter-spacing:-.02em;
-  color: var(--slate);
-  font-size: 1.02rem;
-}
-.profile-sub{
-  margin-top:.18rem;
-  color: var(--muted);
-  font-size: .90rem;
-}
+.profile-title{font-weight:950; letter-spacing:-.02em; color: var(--slate); font-size: 1.02rem;}
+.profile-sub{margin-top:.18rem; color: var(--muted); font-size: .90rem;}
 .profile-tag{
-  display:inline-flex;
-  align-items:center;
-  gap:.45rem;
-  padding:.28rem .60rem;
-  border-radius:999px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.55);
-  font-weight:950;
-  font-size:.82rem;
-  color: rgba(17,24,39,.78);
+  display:inline-flex; align-items:center; gap:.45rem; padding:.28rem .60rem;
+  border-radius:999px; border: 1px solid var(--border); background: rgba(255,255,255,.55);
+  font-weight:950; font-size:.82rem; color: rgba(17,24,39,.78);
 }
-.profile-grid{
-  display:flex;
-  flex-direction:column;
-  gap:.55rem;
-  margin-top:.85rem;
-}
+.profile-grid{display:flex; flex-direction:column; gap:.55rem; margin-top:.85rem;}
 .profile-row{
-  display:flex;
-  justify-content:space-between;
-  gap:1rem;
-  padding:.62rem .75rem;
-  border-radius: 14px;
-  border: 1px solid rgba(17,24,39,.10);
-  background: var(--panel2);
+  display:flex; justify-content:space-between; gap:1rem; padding:.62rem .75rem;
+  border-radius: 14px; border: 1px solid rgba(17,24,39,.10); background: var(--panel2);
 }
-.profile-k{
-  font-weight:900;
-  font-size:.88rem;
-  color: rgba(17,24,39,.72);
-}
-.profile-v{
-  font-weight:950;
-  font-size:.92rem;
-  color: rgba(17,24,39,.92);
-  text-align:right;
-}
+.profile-k{font-weight:900; font-size:.88rem; color: rgba(17,24,39,.72);}
+.profile-v{font-weight:950; font-size:.92rem; color: rgba(17,24,39,.92); text-align:right;}
 
 /* Streamlit tweaks */
 .stButton button{border-radius: 14px !important; padding: .65rem 1.0rem !important; font-weight: 950 !important;}
@@ -172,7 +132,6 @@ h1,h2,h3{letter-spacing:-0.02em; line-height: 1.12; margin-top: 0.2rem;}
     --border: rgba(255,255,255,.13);
     --text: rgba(255,255,255,.92);
     --muted: rgba(255,255,255,.68);
-
     --primary: #60A5FA;
     --success: #34D399;
     --danger:  #F87171;
@@ -195,12 +154,10 @@ h1,h2,h3{letter-spacing:-0.02em; line-height: 1.12; margin-top: 0.2rem;}
   .profile-row{background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12);}
   .profile-k{color: rgba(255,255,255,.72);}
   .profile-v{color: rgba(255,255,255,.92);}
-
   [data-testid="stSidebar"]{border-right: 1px solid rgba(255,255,255,.10);}
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # =============================
 # URL helpers
@@ -273,10 +230,7 @@ def humanize_special(feature: str, value):
         return value
     if feature.startswith("DAYS_") and isinstance(value, (int, float, np.integer, np.floating)):
         years = abs(float(value)) / 365.25
-        # Âge : afficher seulement années
-        if feature == "DAYS_BIRTH":
-            return years  # en années
-        return years     # en années
+        return years  
     return value
 
 def pretty_label(col: str) -> str:
@@ -285,32 +239,24 @@ def pretty_label(col: str) -> str:
 def pretty_value(col: str, v):
     if v is None:
         return "—"
-    # humanize DAYS_ -> années
     if col.startswith("DAYS_"):
         vv = humanize_special(col, v)
         if isinstance(vv, (int, float, np.integer, np.floating)):
             return f"{float(vv):.1f} ans".replace(".", ",")
         return "—"
-
-    # money
     if col in MONEY_COLS:
         return f"{fmt_number(v)} €"
-
-    # percentage-like
     if col == "REGION_POPULATION_RELATIVE":
         try:
             x = float(v)
             return f"{x*100:.1f} %".replace(".", ",")
         except Exception:
             return fmt_number(v)
-
-    # counts should be int
     if col.startswith("CNT_"):
         try:
             return f"{int(round(float(v)))}"
         except Exception:
             return fmt_number(v)
-
     return fmt_number(v)
 
 def clean_record_for_json(record: dict):
@@ -350,12 +296,9 @@ def split_cols(df_: pd.DataFrame):
 def pill(label: str, kind: str = "default"):
     cls = "pill"
     dot = "pill-dot"
-    if kind == "ok":
-        cls = "pill pill-ok"
-    elif kind == "ko":
-        cls = "pill pill-ko"
-    elif kind == "warn":
-        cls = "pill pill-warn"
+    if kind == "ok": cls = "pill pill-ok"
+    elif kind == "ko": cls = "pill pill-ko"
+    elif kind == "warn": cls = "pill pill-warn"
     return f"<span class='{cls}'><span class='{dot}'></span>{label}</span>"
 
 def hero(title_left: str, subtitle: str, pills: List[str], endpoint: str):
@@ -389,12 +332,11 @@ def kpi(title: str, value: str, sub: str):
     """, unsafe_allow_html=True)
 
 def profile_card_html(title: str, subtitle: str, items: List[Tuple[str, str]]) -> str:
-    # Un SEUL bloc HTML 
     count = len(items)
     tag = f"<span class='profile-tag'>{count} champ{'s' if count>1 else ''}</span>" if count > 0 else ""
     rows = "".join([f"<div class='profile-row'><div class='profile-k'>{k}</div><div class='profile-v'>{v}</div></div>" for k, v in items])
     if not rows:
-        rows = "<div class='small' style='margin-top:.85rem;'>Aucune donnée disponible dans ce dataset (pré-traité).</div>"
+        rows = "<div class='small' style='margin-top:.85rem;'>Aucune donnée disponible dans ce dataset.</div>"
     return f"""
     <div class="profile-card">
       <div class="profile-head">
@@ -451,36 +393,12 @@ def top_deviations(df_all: pd.DataFrame, row: pd.Series, numeric_cols: List[str]
 
     return out, df_num_s
 
-def dist_panels(df_num_sample: pd.DataFrame, row: pd.Series, features: List[str]):
-    fig, axes = plt.subplots(2, 3, figsize=(12, 6))
-    axes = axes.flatten()
-
-    for i in range(6):
-        ax = axes[i]
-        if i >= len(features):
-            ax.axis("off")
-            continue
-        feat = features[i]
-        data = df_num_sample[feat].dropna()
-        x = row.get(feat, np.nan)
-        ax.hist(data, bins=25, alpha=0.85)
-        if np.isfinite(x):
-            ax.axvline(float(x), linewidth=2)
-        ax.set_title(pretty_label(feat), fontsize=10)
-        ax.tick_params(axis="both", labelsize=8)
-        for spine in ax.spines.values():
-            spine.set_alpha(0.25)
-
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-
 
 # =============================
 # SIDEBAR
 # =============================
 st.sidebar.header("Paramètres")
 st.sidebar.caption("API • données • sélection")
-
 st.sidebar.divider()
 st.sidebar.subheader("API")
 
@@ -551,12 +469,6 @@ def do_api_call():
     record = client_row_df.to_dict(orient="records")[0]
     payload = [clean_record_for_json(record)]
     try:
-        if "onrender.com" in api_url:
-            try:
-                requests.get(base_from_predict(api_url) + "/", timeout=20)
-            except Exception:
-                pass
-
         with st.spinner("Appel API..."):
             t0 = time.time()
             r = requests.post(api_url, json=payload, timeout=60)
@@ -569,9 +481,6 @@ def do_api_call():
         else:
             st.session_state.api_result = None
             st.session_state.api_error = f"Erreur API {r.status_code} — {r.text}"
-    except requests.exceptions.Timeout:
-        st.session_state.api_result = None
-        st.session_state.api_error = "Timeout (60s). Sur Render, un cold start peut arriver. Relancer."
     except Exception as e:
         st.session_state.api_result = None
         st.session_state.api_error = f"Connexion API impossible: {e}"
@@ -597,7 +506,7 @@ err = st.session_state.api_error
 
 
 # =============================
-# HERO
+# HERO & HEADER
 # =============================
 pills = [pill(f"Mode: {api_mode}", "warn" if api_mode == "Custom" else "default")]
 pills.append(pill("API: erreur", "ko") if err else pill("API: prête", "ok"))
@@ -612,9 +521,6 @@ hero(
     endpoint=api_url
 )
 
-# =============================
-# TOP SUMMARY ROW
-# =============================
 c1, c2, c3, c4 = st.columns([1.6, 1, 1, 1])
 with c1:
     st.markdown("<div class='card'><div class='kicker'>Client sélectionné</div>", unsafe_allow_html=True)
@@ -622,12 +528,9 @@ with c1:
     st.markdown(f"<div class='small'>Dataset: {len(df):,} lignes • Features: {client_row_df.shape[1]}</div>".replace(",", " "), unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-with c2:
-    kpi("Mode API", api_mode, "Local / Render / Custom")
-with c3:
-    kpi("Endpoint", "…/predict", "Affiché dans l’en-tête")
-with c4:
-    kpi("Statut", "Erreur" if err else "OK", "Vérifier l’URL / service" if err else "API disponible")
+with c2: kpi("Mode API", api_mode, "Local / Render / Custom")
+with c3: kpi("Endpoint", "…/predict", "Affiché dans l’en-tête")
+with c4: kpi("Statut", "Erreur" if err else "OK", "Vérifier l’URL / service" if err else "API disponible")
 
 if err:
     st.error(err)
@@ -641,18 +544,12 @@ if res is None:
     st.warning("Clique sur « Calculer le scoring » pour obtenir une décision.")
 else:
     proba = float(res.get("probability", 0.0))
-
     thr = res.get("threshold", None)
     threshold = float(thr) if thr is not None else 0.5
-  # fallback = API
-    if thr is None:
-        st.warning("Le seuil n'a pas été renvoyé par l'API (fallback utilisé).")
 
     status = res.get("status", "—")
     prediction = int(res.get("prediction", 0))
     is_refused = (prediction == 1) or (str(status).strip().lower() == "refusé")
-
-
 
     st.markdown("<div class='rowgap'></div>", unsafe_allow_html=True)
 
@@ -677,21 +574,17 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
     k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        kpi("Probabilité défaut", f"{proba:.2%}", "Plus élevé = plus risqué")
-    with k2:
-        kpi("Seuil", f"{threshold:.2f}", "Règle de décision")
-    with k3:
-        kpi("Écart au seuil", f"{(proba-threshold):+.2%}", "Proba - seuil")
-    with k4:
-        kpi("Latence", f"{res.get('_latency_s', 0):.2f}s", "Render peut cold-start")
+    with k1: kpi("Probabilité défaut", f"{proba:.2%}", "Plus élevé = plus risqué")
+    with k2: kpi("Seuil", f"{threshold:.2f}", "Règle de décision")
+    with k3: kpi("Écart au seuil", f"{(proba-threshold):+.2%}", "Proba - seuil")
+    with k4: kpi("Latence", f"{res.get('_latency_s', 0):.2f}s", "Temps API")
 
 
 # =============================
 # PROFIL CLIENT 
 # =============================
 st.markdown("## Profil client")
-st.caption("Synthèse structurée : informations clés par thématique. Les champs sont affichés s’ils existent dans le dataset.")
+st.caption("Synthèse structurée : informations clés par thématique.")
 
 GROUPS: Dict[str, List[str]] = {
     "Identité & ménage": ["CODE_GENDER", "CNT_CHILDREN", "CNT_FAM_MEMBERS", "NAME_FAMILY_STATUS"],
@@ -705,15 +598,14 @@ def pick_items(cols: List[str], max_items: int = 7) -> List[Tuple[str, str]]:
     for c in cols:
         if c in client_row_df.columns:
             items.append((pretty_label(c), pretty_value(c, row.get(c, None))))
-        if len(items) >= max_items:
-            break
+        if len(items) >= max_items: break
     return items
 
 cards = [
-    ("Identité & ménage", "Situation familiale & composition du foyer", pick_items(GROUPS["Identité & ménage"])),
-    ("Revenus & emploi", "Revenus, stabilité & ancienneté", pick_items(GROUPS["Revenus & emploi"])),
-    ("Crédit", "Montant, annuité & prix du bien", pick_items(GROUPS["Crédit"])),
-    ("Région & historique", "Contexte géographique & historique administratif", pick_items(GROUPS["Région & historique"])),
+    ("Identité & ménage", "Situation familiale", pick_items(GROUPS["Identité & ménage"])),
+    ("Revenus & emploi", "Revenus & emploi", pick_items(GROUPS["Revenus & emploi"])),
+    ("Crédit", "Détails du prêt", pick_items(GROUPS["Crédit"])),
+    ("Région & historique", "Contexte géographique", pick_items(GROUPS["Région & historique"])),
 ]
 
 cA, cB = st.columns(2)
@@ -727,36 +619,24 @@ for col, (title, sub, items) in zip(cols, cards):
             st.markdown(profile_card_html(title, sub, items), unsafe_allow_html=True)
             shown += 1
 
-if shown == 0:
-    st.info("Le dataset est très pré-traité : peu d’informations “métier” disponibles. Affichage fallback.")
-    fallback = []
-    for c in client_row_df.columns:
-        v = row.get(c, None)
-        try:
-            if pd.isna(v):
-                continue
-        except Exception:
-            pass
-        fallback.append((pretty_label(c), pretty_value(c, v)))
-        if len(fallback) >= 12:
-            break
-    st.markdown(profile_card_html("Aperçu (fallback)", "Premières variables non-nulles disponibles", fallback), unsafe_allow_html=True)
-
 
 # =============================
-# ANALYSE VARIABLES
+# ANALYSE VARIABLES (LES 5 ONGLETS)
 # =============================
 st.markdown("<div class='rowgap'></div>", unsafe_allow_html=True)
-tab1, tab2, tab3, tab4 = st.tabs([
+
+# Définition des 5 onglets, incluant Analyse bivariée
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Top variables (z-score)",
     "Distributions (client vs population)",
+    "Analyse Bivariée",
     "Explication modèle",
     "Données brutes"
 ])
 
 with tab1:
     st.markdown("### Top variables atypiques")
-    st.caption("Comparaison client vs population via z-score absolu (échantillon).")
+    st.caption("Comparaison client vs population via z-score absolu.")
 
     if not show_details:
         st.info("Active « Analyse variables » dans la sidebar.")
@@ -778,58 +658,70 @@ with tab1:
             ax.barh(show["feature"][::-1], show["z_abs"][::-1])
             ax.set_xlabel("z-score absolu")
             ax.set_title("Top 12 variables les plus atypiques")
-            ax.grid(axis="x", alpha=0.2)
-            for spine in ax.spines.values():
-                spine.set_alpha(0.25)
             st.pyplot(fig, use_container_width=True)
 
 with tab2:
     st.markdown("### Distributions (client vs population)")
     st.caption("Histogramme interactif : distribution sur l’échantillon + position du client.")
 
-    if df_num_sample is None or df_num_sample.empty:
-        st.warning("Aucune donnée numérique disponible pour tracer les distributions.")
+    if not show_details or 'df_num_sample' not in locals() or df_num_sample is None:
+         st.warning("Active l'analyse des variables dans la barre latérale.")
     else:
         candidate_cols = [c for c in df_num_sample.columns if c not in ("SK_ID_CURR", "TARGET")]
         if not candidate_cols:
             st.warning("Aucune variable numérique exploitable pour les distributions.")
         else:
-            feat = st.selectbox("Choisir une variable", options=candidate_cols, index=0)
+            feat = st.selectbox("Choisir une variable pour l'histogramme", options=candidate_cols, index=0)
 
             s = df_num_sample[feat].replace([np.inf, -np.inf], np.nan).dropna()
             x_client = row.get(feat, np.nan)
             x_client_num = float(x_client) if pd.notna(x_client) else np.nan
 
-            import plotly.express as px
-
             fig = px.histogram(
-                x=s,
-                nbins=30,
-                labels={"x": pretty_label(feat) if "pretty_label" in globals() else feat, "count": "Nombre de clients"},
-                title=None
+                x=s, nbins=30,
+                labels={"x": pretty_label(feat), "count": "Nombre de clients"}
             )
-
             if np.isfinite(x_client_num):
-                fig.add_vline(x=x_client_num)
+                fig.add_vline(x=x_client_num, line_color="red", annotation_text="Client")
 
             st.plotly_chart(fig, use_container_width=True)
 
-            colA, colB, colC = st.columns(3)
-            with colA:
-                st.metric("Moyenne (échantillon)", f"{float(s.mean()):.4g}" if len(s) else "—")
-            with colB:
-                st.metric("Médiane (échantillon)", f"{float(s.median()):.4g}" if len(s) else "—")
-            with colC:
-                st.metric(
-                    "Valeur client",
-                    fmt_number(x_client_num) if ("fmt_number" in globals() and np.isfinite(x_client_num))
-                    else (f"{x_client_num:.4g}" if np.isfinite(x_client_num) else "—")
-                )
-
-
 with tab3:
-    st.markdown("### Explication de la décision (locale)")
-    st.caption("Contributions des variables les plus influentes pour CE client (positif = augmente le risque).")
+    st.markdown("### Analyse Bivariée")
+    st.caption("Croiser deux variables pour comprendre le positionnement du client par rapport à l'échantillon global.")
+
+    if not show_details or 'df_num_sample' not in locals() or df_num_sample is None:
+        st.warning("Active l'analyse des variables dans la barre latérale.")
+    else:
+        candidate_cols = [c for c in df_num_sample.columns if c not in ("SK_ID_CURR", "TARGET")]
+        
+        colX, colY = st.columns(2)
+        with colX:
+            feat_x = st.selectbox("Axe X (Variable 1)", options=candidate_cols, index=0, key="biv_x")
+        with colY:
+            feat_y = st.selectbox("Axe Y (Variable 2)", options=candidate_cols, index=min(1, len(candidate_cols)-1), key="biv_y")
+        
+        # Nuage de points de l'échantillon
+        fig = px.scatter(
+            df_num_sample, x=feat_x, y=feat_y, 
+            opacity=0.3,
+            labels={feat_x: pretty_label(feat_x), feat_y: pretty_label(feat_y)}
+        )
+        
+        # Position du client sélectionné
+        x_client = float(row.get(feat_x, np.nan))
+        y_client = float(row.get(feat_y, np.nan))
+        
+        if np.isfinite(x_client) and np.isfinite(y_client):
+            fig.add_scatter(x=[x_client], y=[y_client], mode='markers', 
+                            marker=dict(color='red', size=14, symbol='star'),
+                            name=f"Client sélectionné")
+            
+        st.plotly_chart(fig, use_container_width=True)
+
+with tab4:
+    st.markdown("### Explication de la décision")
+    st.caption("Comparaison entre l'importance globale du modèle et les contributions locales spécifiques à CE client.")
 
     if res is None:
         st.info("Calcule le scoring d’abord.")
@@ -838,31 +730,46 @@ with tab3:
         if eerr:
             st.warning(eerr)
         else:
-            top = explain.get("top", [])
-            if not top:
+            top_local = explain.get("top", [])
+            top_global = explain.get("global_importance", [])
+            
+            if not top_local:
                 st.info("Pas d’explication renvoyée.")
             else:
-                df_exp = pd.DataFrame(top)
-                # tri pour affichage
-                df_exp["abs"] = df_exp["contribution"].abs()
-                df_exp = df_exp.sort_values("abs", ascending=True)
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### Importance LOCALE")
+                    st.write("Ce qui a influencé le score de **ce client**.")
+                    df_local = pd.DataFrame(top_local)
+                    df_local["abs"] = df_local["contribution"].abs()
+                    df_local = df_local.sort_values("abs", ascending=True)
 
-                # ---- Graphique interactif (Altair) ----
-                df_exp = pd.DataFrame(top)
-                df_exp["abs"] = df_exp["contribution"].abs()
-                df_exp = df_exp.sort_values("abs", ascending=True)
+                    fig_local = px.bar(
+                        df_local, x="contribution", y="feature", orientation="h",
+                        hover_data=["value"], color="contribution",
+                        color_continuous_scale=["#16A34A", "#E2E8F0", "#DC2626"]
+                    )
+                    fig_local.update_layout(coloraxis_showscale=False, margin=dict(l=0, r=0, t=30, b=0))
+                    st.plotly_chart(fig_local, use_container_width=True)
+                
+                with col2:
+                    st.markdown("#### Importance GLOBALE")
+                    st.write("Ce qui importe le plus pour **le modèle en général**.")
+                    if top_global:
+                        df_global = pd.DataFrame(top_global)
+                        df_global = df_global.sort_values("importance", ascending=True).tail(12) 
 
-                fig = px.bar(
-                    df_exp,
-                    x="contribution",
-                    y="feature",
-                    orientation="h",
-                    hover_data=["value", "contribution"],
-                    title=None
-                )
-st.plotly_chart(fig, use_container_width=True) 
+                        fig_global = px.bar(
+                            df_global, x="importance", y="feature", orientation="h",
+                            color_discrete_sequence=["#2563EB"]
+                        )
+                        fig_global.update_layout(margin=dict(l=0, r=0, t=30, b=0))
+                        st.plotly_chart(fig_global, use_container_width=True)
+                    else:
+                        st.info("L'importance globale n'est pas disponible pour ce modèle.")
 
-with tab4:
+with tab5:
     st.markdown("### Données brutes")
     st.caption("Vue détaillée (audit / debug).")
 
@@ -875,10 +782,8 @@ with tab4:
         raw["value"] = raw.apply(lambda r: pretty_value(r["feature"].upper().replace(" ", "_"), r["value"]), axis=1)
 
         a, b = st.columns([1.2, 1])
-        with a:
-            st.dataframe(raw, use_container_width=True, hide_index=True)
-        with b:
-            st.dataframe(client_row_df, use_container_width=True)
+        with a: st.dataframe(raw, use_container_width=True, hide_index=True)
+        with b: st.dataframe(client_row_df, use_container_width=True)
 
 st.divider()
-st.caption("Dashboard Streamlit.")
+st.caption("Dashboard interactif pour chargé de clientèle - Prêt à dépenser.")
