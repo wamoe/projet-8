@@ -28,7 +28,8 @@ expected_cols = None
 def ensure_loaded():
     global model, expected_cols
     if expected_cols is None:
-        expected_cols = pd.read_csv(FEATURES_PATH)["feature"].tolist()
+        df_feat = pd.read_csv(FEATURES_PATH)
+        expected_cols = df_feat["feature"].tolist() if "feature" in df_feat.columns else df_feat.iloc[:, 0].tolist()
     if model is None:
         print("Chargement du modèle (lazy)...")
         model = joblib.load(MODEL_PATH)
@@ -64,10 +65,10 @@ def explain():
     Explication locale : contributions type SHAP via LightGBM pred_contrib
     (robuste, évite les soucis de dépendances shap/numba en prod).
     """
-    model, expected_cols = ensure_loaded()
-
-    if not model:
-        return jsonify({'error': "Le modèle n'est pas chargé. Vérifiez les logs du serveur."}), 500
+    try:
+        model, expected_cols = ensure_loaded()
+    except Exception as e:
+        return jsonify({"error": f"Model not available: {e}"}), 503
 
     try:
         data = request.get_json()
@@ -125,8 +126,10 @@ def explain():
 def predict():
     model, expected_cols = ensure_loaded()
 
-    if not model:
-        return jsonify({'error': 'Le modèle n\'est pas chargé. Vérifiez les logs du serveur.'}), 500
+    try:
+        model, expected_cols = ensure_loaded()
+    except Exception as e:
+        return jsonify({"error": f"Model not available: {e}"}), 503
     
     try:
         # 1. Récupération des données JSON
